@@ -12,28 +12,6 @@ CTStitcher is a collection of tools designed to streamline the planning process 
 *   **DICOM Export:** Exports the stitched CT scan to a DICOM format that can be imported into a treatment planning system.
 *   **Varian Eclipse Integration:** Designed to be used as a plugin within the Varian Eclipse Treatment Planning System.
 
-## Technical Details
-
-*   **Language:** C#
-*   **Framework:** .NET Framework 4.72
-*   **Platform:** Windows (x64)
-*   **UI:** Windows Presentation Foundation (WPF)
-*   **IDE:** Visual Studio
-*   **Key Libraries:**
-    *   **CommunityToolkit.Mvvm:** For implementing the MVVM pattern.
-    *   **EvilDICOM:** For handling DICOM files.
-    *   **SimpleITK:** For medical image processing.
-    *   **VMS.TPS.Common.Model.API:** For integration with the Varian Eclipse Treatment Planning System.
-
-## Project Structure
-
-The project is organized into the following folders:
-
-*   `CTStitcher/`: Contains the main source code for the WPF application.
-*   `CTStitcher/CTStitcherTests/`: Contains unit tests for the application.
-*   `CTStitcher/Resources/`: Contains necessary resources and libraries, such as the Varian ESAPI libraries and SimpleITK.
-*   `Docs/`: Contains documentation and images for the project.
-
 ## Background
 
 Many VMAT TBI programs do not have a CT scanner capable of capturing adult patients in one scan. Typically, two CT scans are acquired: one in HFS and one in FFS. These scans are registered in the planning software and two sets of plans are created:
@@ -51,12 +29,51 @@ The ideal case is to use a single CT scan for planning to eliminate these issues
 - Cleaned up project structure for easier maintenance and expansion
 - The original TXIHelper algorithm can take 30-40min depending on computing resources (from internal testing). This script provides an alternative algorithm that does not consider rotations (3DOF only), which is ~6 times faster than TXIHelper.
 
+## Technical Details
+
+*   **Language:** C#
+*   **Framework:** .NET Framework 4.7.2
+*   **Platform:** Windows (x64)
+*   **UI:** Windows Presentation Foundation (WPF)
+*   **IDE:** Visual Studio
+*   **Key Libraries:**
+    *   **CommunityToolkit.Mvvm:** For implementing the MVVM pattern.
+    *   **SimpleITK:** For medical image processing.
+    *   **VMS.TPS.Common.Model.API:** For integration with the Varian Eclipse Treatment Planning System.
+    *   **Microsoft.Xaml.Behaviors.Wpf:** For using behaviors in WPF.
+    *   **CTStitcher** The core functionality of stitching the images together and displaying the concatenated images to the user
+        * This is contained as a nuget package as it requires the .net sdk development environemnt to open in visual studio (not included by default in VS2019). Rather than migrating the entire project to a .net framework style project, was just easy to ship as a nuget
+
+## Project Structure
+
+The project is organized into the following folders:
+
+*   `CTStitcher/`: Contains the main source code for the WPF application.
+    *   `CTStitcher.UI/`: The main WPF application project.
+        *   `Views/`: Contains the XAML views.
+        *   `ViewModels/`: Contains the view models.
+        *   `_Configuration/`: Contains the configuration files for the application.
+        *   `Launcher/`: Contains the application launcher.
+    *   `Resources/`: Contains necessary resources and libraries, such as the Varian ESAPI libraries and SimpleITK.
+*   `Docs/`: Contains documentation and images for the project.
+
+## Build and Deployment
+
+To build the project, you will need Visual Studio with the .NET desktop development workload installed.
+
+1.  Open the `CTStitcher/CTStitcherApp.sln` solution file in Visual Studio.
+2.  Edit the `default write path` in the `CTStitcherConfig.ini` file in the `_Configuration` folder. This will be the location where the concatenated CT will be written to (i.e., /\<default write path>/\<patient mrn>/)
+3.  Set the solution build configuration to x64
+4.  Re-build the solution. This will compile the application and copy the necessary files to the output directory.
+
+The application can be deployed by copying the contents of the output directory (e.g., `bin/`) to the published scripts folder on the aria image server (or another location of the users choosing). Open a patient in external beam planning, open that folder location in tools->scripts, then launch the LaunchCTStitcher.cs script.
+
 ## Program and IFU
 
 To run the program, the following steps need to be performed:
 
 1.  Import the HFS and FFS CT scans to Eclipse.
-2.  Create a 3DOF rigid registration between the two CT scans (no rotations!).
+2.  Create a rigid registration between the two CT scans. Highly recommend using the translations only concatenation algorithm (requires a 3D rigid registration with **NO ROTATIONS**)
 3.  Open the HFS scan in external beam planning.
 4.  Launch the script.
 5.  Make the appropriate assignments for the HFS and FFS scans in the UI.
