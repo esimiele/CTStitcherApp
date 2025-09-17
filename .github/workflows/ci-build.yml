@@ -26,23 +26,44 @@ jobs:
       - name: Build (x64 Release)
         run: msbuild "CTStitcher/CTStitcherApp.sln" /p:Configuration=Release /p:Platform="x64" /m
 
-      - name: Locate build output
+      - name: Locate build output (bin/CTStitcher)
         shell: pwsh
         run: |
-          $out = Get-ChildItem -Path . -Recurse -Include *.exe | Where-Object { $_.FullName -match '\\bin\\CTStitcher\\' } | Select-Object -First 1
-          if (-not $out) { throw "Could not find a Release exe in the solution output." }
-          "MAIN_EXE=$($out.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $binRoot = Join-Path $env:GITHUB_WORKSPACE "bin\CTStitcher"
+          if (-not (Test-Path $binRoot)) {
+            throw "Expected build output folder not found: $binRoot"
+          }
+
+          # Pick your app exe (ignore test hosts, vshost, etc.)
+          $exe = Get-ChildItem -Path $binRoot -Recurse -File -Include *.exe |
+            Where-Object { $_.Name -notmatch 'vstest|testhost|vshost' } |
+            Select-Object -First 1
+
+          if (-not $exe) {
+            throw "No application .exe found under $binRoot"
+          }
+
+          "APP_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "APP_DIR=$($exe.DirectoryName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Found EXE: $($exe.FullName)"
 
       - name: Package artifact
         shell: pwsh
         run: |
-          $root = Split-Path "$env:MAIN_EXE" -Parent
-          $pkg = "$env:RUNNER_TEMP\CTStitcherApp_build.zip"
-          # Include exe, dlls, configs, and Resources folder (for ESAPI/SimpleITK/etc.)
-          $items = @("$root\*", "$root\..\*\*", ".\Resources\**\*")
-          Compress-Archive -Path $items -DestinationPath $pkg -Force
-          Write-Host "Packaged to $pkg"
+          $pkg = Join-Path $env:RUNNER_TEMP "CTStitcherApp_build.zip"
+
+          # Include everything next to the EXE (DLLs, configs, etc.)
+          $paths = @("$env:APP_DIR\*")
+
+          # If you keep runtime assets in a repo-level Resources folder, include them too
+          $repoResources = Join-Path $env:GITHUB_WORKSPACE "Resources"
+          if (Test-Path $repoResources) {
+            $paths += "$repoResources\**\*"
+          }
+
+          Compress-Archive -Path $paths -DestinationPath $pkg -Force
           "PKG=$pkg" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Packaged: $pkg"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

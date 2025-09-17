@@ -27,20 +27,35 @@ jobs:
       - name: Build (x64 Release)
         run: msbuild "CTStitcher/CTStitcherApp.sln" /p:Configuration=Release /p:Platform="x64" /m
 
-      - name: Package for distribution
+      - name: Package for distribution (bin/CTStitcher)
         shell: pwsh
         run: |
-          $exe = Get-ChildItem -Recurse -Include *.exe | Where-Object { $_.FullName -match '\\bin\\CTStitcher\\' } | Select-Object -First 1
-          if (-not $exe) { throw "Could not find Release exe." }
-          $root = Split-Path $exe.FullName -Parent
-          $version = "${{ github.ref_name }}"  # the tag, e.g. v1.0.0
-          $zip = "$env:RUNNER_TEMP\CTStitcherApp-$version.zip"
-          $items = @("$root\*", "$root\..\*\*", ".\Resources\**\*")
-          Compress-Archive -Path $items -DestinationPath $zip -Force
-          "ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $binRoot = Join-Path $env:GITHUB_WORKSPACE "bin\CTStitcher"
+          if (-not (Test-Path $binRoot)) {
+            throw "Expected build output folder not found: $binRoot"
+          }
 
-      - name: Generate release notes
-        id: notes
+          $exe = Get-ChildItem -Path $binRoot -Recurse -File -Include *.exe |
+            Where-Object { $_.Name -notmatch 'vstest|testhost|vshost' } |
+            Select-Object -First 1
+
+          if (-not $exe) {
+            throw "No application .exe found under $binRoot"
+          }
+
+          $zip = Join-Path $env:RUNNER_TEMP ("CTStitcherApp-" + "${{ github.ref_name }}".Replace('/','_') + ".zip")
+
+          $paths = @("$($exe.DirectoryName)\*")
+          $repoResources = Join-Path $env:GITHUB_WORKSPACE "Resources"
+          if (Test-Path $repoResources) {
+            $paths += "$repoResources\**\*"
+          }
+
+          Compress-Archive -Path $paths -DestinationPath $zip -Force
+          "ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Packaged: $zip"
+
+      - name: Create GitHub Release and upload asset
         uses: softprops/action-gh-release@v2
         with:
           draft: false
