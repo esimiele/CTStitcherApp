@@ -1,0 +1,51 @@
+name: CI - Build (Windows)
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore "CTStitcher/CTStitcherApp.sln"
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build (x64 Release)
+        run: msbuild "CTStitcher/CTStitcherApp.sln" /p:Configuration=Release /p:Platform="x64" /m
+
+      - name: Locate build output
+        shell: pwsh
+        run: |
+          $out = Get-ChildItem -Path . -Recurse -Include *.exe | Where-Object { $_.FullName -match '\\bin\\Release\\' } | Select-Object -First 1
+          if (-not $out) { throw "Could not find a Release exe in the solution output." }
+          "MAIN_EXE=$($out.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Package artifact
+        shell: pwsh
+        run: |
+          $root = Split-Path "$env:MAIN_EXE" -Parent
+          $pkg = "$env:RUNNER_TEMP\CTStitcherApp_build.zip"
+          # Include exe, dlls, configs, and Resources folder (for ESAPI/SimpleITK/etc.)
+          $items = @("$root\*", "$root\..\*\*", ".\Resources\**\*")
+          Compress-Archive -Path $items -DestinationPath $pkg -Force
+          Write-Host "Packaged to $pkg"
+          "PKG=$pkg" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CTStitcherApp-build
+          path: ${{ env.PKG }}
