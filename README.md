@@ -114,6 +114,9 @@ CT stitcher can be tested using both dicom files and CT objects in Eclipse. The 
 
 ## Updates Summary
 
+### 9/17/2025
+*	Added Github workflows
+
 ### 4/21/2025
 
 *   Added ability to zoom and pan in CT stitcher to aid in reviewing image concatenation prior to pushing for autocontouring.
