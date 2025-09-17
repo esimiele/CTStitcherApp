@@ -30,7 +30,7 @@ jobs:
       - name: Package for distribution
         shell: pwsh
         run: |
-          $exe = Get-ChildItem -Recurse -Include *.exe | Where-Object { $_.FullName -match '\\bin\\Release\\' } | Select-Object -First 1
+          $exe = Get-ChildItem -Recurse -Include *.exe | Where-Object { $_.FullName -match '\\bin\\CTStitcher\\' } | Select-Object -First 1
           if (-not $exe) { throw "Could not find Release exe." }
           $root = Split-Path $exe.FullName -Parent
           $version = "${{ github.ref_name }}"  # the tag, e.g. v1.0.0

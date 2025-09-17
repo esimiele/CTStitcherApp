@@ -29,7 +29,7 @@ jobs:
       - name: Locate build output
         shell: pwsh
         run: |
-          $out = Get-ChildItem -Path . -Recurse -Include *.exe | Where-Object { $_.FullName -match '\\bin\\Release\\' } | Select-Object -First 1
+          $out = Get-ChildItem -Path . -Recurse -Include *.exe | Where-Object { $_.FullName -match '\\bin\\CTStitcher\\' } | Select-Object -First 1
           if (-not $out) { throw "Could not find a Release exe in the solution output." }
           "MAIN_EXE=$($out.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
