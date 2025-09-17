@@ -50,15 +50,17 @@ jobs:
           }
 
           $version = "${{ github.ref_name }}"  # e.g. v1.2.3
-          $appDir  = $exe.DirectoryName
+          # Step up one level from bin\CTStitcher
+          $appDir   = $exe.DirectoryName
+          $parentDir = Split-Path $appDir -Parent   # this is bin\
           $zipPath = Join-Path $env:RUNNER_TEMP ("CTStitcherApp-" + $version.Replace('/','_') + ".zip")
 
-          # Add the app dir and (optionally) repo-level Resources
-          $paths = @("$appDir\*")
+          # Grab everything under bin\ (so CTStitcher\ plus any sibling files like your extra file)
+          $paths = @("$parentDir\*")
+
+          # Optionally still add Resources
           $repoResources = Join-Path $env:GITHUB_WORKSPACE "Resources"
-          if (Test-Path $repoResources) {
-            $paths += "$repoResources\**\*"
-          }
+          if (Test-Path $repoResources) { $paths += "$repoResources\**\*" }
 
           # (Optional) include a version.txt inside the zip
           $verFile = Join-Path $appDir "version.txt"
